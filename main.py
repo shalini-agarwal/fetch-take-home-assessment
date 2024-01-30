@@ -1,12 +1,15 @@
+# I have used python and flask to create the web-server for this task.
 from flask import Flask, request, jsonify
+# Used flask-expects-json package for validating the POST endpoint request data. It checks whether the request has all the necessary fields along with their data types.
+# This package didn't have enough documentation to specify the validation process for an array with a nested object i.e. for items key. Hence, tested the format for items separately.
 from flask_expects_json import expects_json
 import math
+# Used Python package uuid to generate unique IDs.
 import uuid
 
 app = Flask(__name__)
 
-# Used flask-expects-json decorator for validating the POST endpoint request data. It checks whether the request has all the necessary fields along with the data types.
-# This decorator didn't have enough documentation to specify the validation process for nested schema format i.e. for items key. Hence, tested the format for items separately.
+# Defined the expected schema for validation
 process_schema = {
     'type': 'object',
     'properties': {
@@ -19,24 +22,24 @@ process_schema = {
     'required': ['retailer', 'purchaseDate', 'purchaseTime', 'total', 'items']
 }
 
-# Used dictionary data structure to store the receipt ID and their points in a key-value format respectively.
+# For the in-memory database, used dictionary data structure to store the receipt ID and their points in a key-value format respectively.
 receipts = {}
 
 @app.route("/receipts/process", methods=["POST"])
-@expects_json(process_schema)
+@expects_json(process_schema) # Decorator for flask-expects-json
 def process_receipt():
-    # The variable data contains the receipt information in a dictionary data type.
+    # Extracted request body and stored it in varible data
     data = request.json
     items = data['items']
 
-    # Checked whether the items array has atleast one item and if both the fields "short description" and "price" is present.
+    # Custom schema validation - Checked whether the items array has atleast one item and if both the fields - "short description" and "price" - are present.
     if len(items) == 0:
         return 'items is required', 400
     for item in items:
         if not 'shortDescription' in item or not 'price' in item:
             return 'item is incorrect', 400
 
-    # Used the uuid4() function to generate random UUID using UUID module from Python as receipt ID.
+    # Used the uuid4() function from Python's UUID module to generate random ID. This would be used as receipt ID and would be sent as a response to the request.
     receipt_id = str(uuid.uuid4())
     # Calculated the points againts the receipt provided in calculate_points() function and stored the calculated points against the generated UUID. 
     receipts[receipt_id] = calculate_points(data)
@@ -45,6 +48,7 @@ def process_receipt():
 
 @app.route("/receipts/<id>/points", methods=["GET"])
 def get_points(id):
+    # If requested ID is not present in the database, send a 404 status code
     if not id in receipts:
         return 'No receipt found for that id', 404
     return jsonify({"points": receipts[id]}), 200
@@ -60,7 +64,7 @@ def retailer_name_points(retailer):
 
 def value_points(total):
     points = 0
-    # Extracting the last two digits from the total value and checking if the value doesn't contain any cents.
+    # Extracting the last two digits from the total value and checking if the number of cents is 0.
     cents = total[-2:]
     if cents == '00':
         points += 50
@@ -74,10 +78,12 @@ def value_points(total):
 def items_points(items):
     points = 0
     number_of_items = len(items)
+    # Checking how many pairs of items we have.
     points += (number_of_items // 2) * 5
 
     for item in items:
         short_desc, price = item['shortDescription'], float(item['price'])
+        # Checking if item description length is a multiple of 3.
         if len(short_desc.strip()) % 3 == 0:
             points += math.ceil(price * 0.2)
 
@@ -85,7 +91,7 @@ def items_points(items):
 
 def purchase_date_points(purchase_date):
     points = 0
-    # Extracting the one's digit from the date value to check whether the date is an odd or even number
+    # Extracting the one's digit from the date value to check whether the date is an odd or even number.
     date_ones_digit = purchase_date[-1]
     if (int(date_ones_digit) % 2 == 1):
         points += 6
@@ -95,7 +101,8 @@ def purchase_date_points(purchase_date):
 def purchase_time_points(purchase_time):
     points = 0
     purchase_hour, purchase_minute = purchase_time[0:2], purchase_time[3:5]
-    # Checking if the purchase hour falls between 14:00+ and 16:00- i.e. any time between this period will have 14:00+ hour and 15 hour. 16:00 time will be 4 pm which is invalid. 
+    # Checking if the purchase hour falls between 2 pm (14:00) and 4 pm (16:00)(not including these two times).
+    # For this, we need to check for two things - purchase time is >= 2:01PM and purchase time is <= 3:59PM.
     if (purchase_hour == '14' and purchase_minute != '00') or purchase_hour == '15':
         points += 10
 
@@ -112,7 +119,7 @@ def calculate_points(data):
     total = data['total']
     items = data['items']
 
-    # Calculating the points for each of the different rules using separate functions
+    # Calculating the points for each of the different rules using separate functions.
     points += retailer_name_points(retailer)
     points += value_points(total)
     points += items_points(items)
