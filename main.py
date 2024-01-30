@@ -1,7 +1,10 @@
 # I have used python and flask to create the web-server for this task.
 from flask import Flask, request, jsonify
-# Used flask-expects-json package for validating the POST endpoint request data. It checks whether the request has all the necessary fields along with their data types.
-# This package didn't have enough documentation to specify the validation process for an array with a nested object i.e. for items key. Hence, tested the format for items separately.
+'''
+Used flask-expects-json package for validating the POST endpoint request data. It checks whether the request has all the necessary fields along with their data types.
+This package didn't have enough documentation to specify the validation process for an array with a nested object i.e. for items key. Hence, tested the format for items separately.
+There could be additional validations, for example, pattern matching for purchase date and time. But, given the scope and requirements of the challenge and in the interest of time, I have not implemented those currently.
+'''
 from flask_expects_json import expects_json
 import math
 # Used Python package uuid to generate unique IDs.
